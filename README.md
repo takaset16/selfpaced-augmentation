@@ -1,9 +1,11 @@
 # selfpaced-augmentation
 
+Demo code for the flooding regularizer proposed in "Self-paced data augmentation for training neural networks" by Tomoumi Takase, Ryo Karakida, and Hideki Asoh.
+
 # Demo
 
 ## Requirements
-pytorch　1.6.0
+pytorch 1.6.0
 
 ## Execution
 ```
