@@ -14,6 +14,8 @@ class MainNN(object):
     def __init__(self, loop, n_data, gpu_multi, hidden_size, num_samples, num_epochs, batch_size_training, batch_size_test,
                  n_model, opt, save_file, flag_wandb, show_params, save_images, cutout, flag_traintest, n_aug, flag_transfer,
                  flag_randaug, rand_n, rand_m, flag_lars, lb_smooth, flag_lr_schedule, flag_warmup, flag_acc5, flag_spa, judge_noise, flag_variance):
+        """"""
+        """Basic"""
         self.loop = loop
         self.seed = 1001 + loop
         self.train_loader = None
@@ -40,6 +42,8 @@ class MainNN(object):
         self.cutout = cutout
         self.flag_traintest = flag_traintest
         self.flag_acc5 = flag_acc5
+
+        """Training improvement"""
         self.n_aug = n_aug
         self.flag_transfer = flag_transfer
         self.flag_shake = 0
@@ -50,15 +54,20 @@ class MainNN(object):
         self.lb_smooth = lb_smooth
         self.flag_lr_schedule = flag_lr_schedule
         self.flag_warmup = flag_warmup
+
+        """Self-paced augmentation (SPA)"""
         self.flag_spa = flag_spa
         self.flag_noise = None
         self.judge_noise = judge_noise
         self.flag_variance = flag_variance
 
     def run_main(self):
+        """"""
+        """Fix the random seed"""
         np.random.seed(self.seed)
         torch.manual_seed(self.seed)
 
+        """RandAugment parameters"""
         if self.flag_randaug == 1:
             if self.rand_n == 0 and self.rand_m == 0:
                 if self.n_model == 'ResNet':
@@ -75,6 +84,7 @@ class MainNN(object):
                         self.rand_n = 3
                         self.rand_m = 7
 
+        """Dataset"""
         traintest_dataset = dataset.MyDataset_training(n_data=self.n_data, num_data=self.num_training_data, seed=self.seed,
                                                        flag_randaug=self.flag_randaug, rand_n=self.rand_n, rand_m=self.rand_m, cutout=self.cutout)
         self.num_channel, self.num_classes, self.size_after_cnn, self.input_size, self.hidden_size = traintest_dataset.get_info(n_data=self.n_data)
@@ -111,6 +121,7 @@ class MainNN(object):
         self.test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=self.batch_size_test, sampler=test_sampler,
                                                        shuffle=test_shuffle, num_workers=num_workers, pin_memory=True)
 
+        """Transfer learning"""
         if self.flag_transfer == 1:
             pretrained = True
             num_classes = 1000
@@ -118,14 +129,20 @@ class MainNN(object):
             pretrained = False
             num_classes = self.num_classes
 
+        """Neural network model"""
         model = None
         if self.n_model == 'CNN':
             model = cnn.ConvNet(num_classes=self.num_classes, num_channel=self.num_channel, size_after_cnn=self.size_after_cnn, n_aug=self.n_aug)
         elif self.n_model == 'ResNet':
-            model = resnet.ResNet(n_data=self.n_data, depth=50, num_classes=self.num_classes, num_channel=self.num_channel, n_aug=self.n_aug, bottleneck=True)
+            model = resnet.ResNet(n_data=self.n_data, depth=50, num_classes=self.num_classes, num_channel=self.num_channel, n_aug=self.n_aug, bottleneck=True)  # resnet50
+            # model = resnet.ResNet(n_data=self.n_data, depth=200, num_classes=self.num_classes, num_channel=self.num_channel, bottleneck=True)  # resnet200
         elif self.n_model == 'WideResNet':
-            model = wideresnet.WideResNet(depth=28, widen_factor=10, dropout_rate=0.0, num_classes=self.num_classes, num_channel=self.num_channel, n_aug=self.n_aug)
+            # model = resnet.wide_resnet50_2(num_classes=self.num_classes, num_channel=self.num_channel)
+            # model = WideResNet(depth=40, iden_factor=2, dropout_rate=0.0, num_classes=num_class, num_channel=self.num_channel)  # wresnet40_2
+            model = wideresnet.WideResNet(depth=28, widen_factor=10, dropout_rate=0.0, num_classes=self.num_classes, num_channel=self.num_channel, n_aug=self.n_aug)  # wresnet28_10
+        print(torch.__version__)
 
+        """Transfer learning"""
         if self.flag_transfer == 1:
             for param in model.parameters():
                 param.requires_grad = False
@@ -133,6 +150,7 @@ class MainNN(object):
             num_features = model.fc.in_features
             model.fc = nn.Linear(num_features, self.num_classes)
 
+        """Show paramters"""
         if self.show_params == 1:
             params = 0
             for p in model.parameters():
@@ -140,6 +158,7 @@ class MainNN(object):
                     params += p.numel()
             print(params)
 
+        """GPU setting"""
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         model = model.to(device)
         if device == 'cuda':
@@ -148,19 +167,21 @@ class MainNN(object):
             torch.backends.cudnn.benchmark = True
             print('GPU={}'.format(torch.cuda.device_count()))
 
+        """Loss function"""
         if self.lb_smooth > 0.0:
             criterion = objective.SmoothCrossEntropyLoss(self.lb_smooth)
         else:
             criterion = objective.SoftCrossEntropy()
 
+        """Optimizer"""
         optimizer = 0
 
-        if self.opt == 0:
+        if self.opt == 0:  # Adam
             if self.flag_transfer == 1:
                 optimizer = torch.optim.Adam(model.fc.parameters(), lr=0.001)
             else:
                 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-        elif self.opt == 1:
+        elif self.opt == 1:  # SGD
             if self.n_model == 'ResNet':
                 lr = 0.1
                 weight_decay = 0.0001
@@ -186,6 +207,7 @@ class MainNN(object):
             from torchlars import LARS
             optimizer = LARS(optimizer)
 
+        """Learning rate scheduling"""
         scheduler = None
         if self.flag_lr_schedule == 2:
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.num_epochs, eta_min=0.)
@@ -218,6 +240,7 @@ class MainNN(object):
                 after_scheduler=scheduler
             )
 
+        """Initialize"""
         self.flag_noise = np.random.randint(0, 2, self.num_training_data)
 
         if self.flag_acc5 == 1:
@@ -233,14 +256,21 @@ class MainNN(object):
         self.loss_training_batch = np.zeros(int(self.num_epochs * np.ceil(self.num_training_data / self.batch_size_training)))
 
         for epoch in range(self.num_epochs):
+            """Training"""
             model.train()
-            start_epoch_time = timeit.default_timer()
+            start_epoch_time = timeit.default_timer()  # Get the start time of this epoch
 
             loss_each_all = np.zeros(self.num_training_data)
             loss_training_all = 0
             loss_test_all = 0
 
-            if self.flag_variance == 1:
+            """Learning rate scheduling"""
+            # if self.flag_lr_schedule == 1:
+            #     if self.num_epochs == 200:
+            #         if epoch == 100:
+            #             optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+
+            if self.flag_variance == 1:  # when computing the variance of training loss
                 if epoch % fixed_interval == 0:
                     loss_fixed = np.zeros(self.num_training_data // self.batch_size_training)
 
@@ -276,21 +306,24 @@ class MainNN(object):
                     images = images.to(device)
                 labels = labels.to(device)
 
+                """Save images"""
                 if self.save_images == 1:
                     util.save_images(images)
 
+                """Get training loss for each sample by inputting data before applying data augmentation"""
                 if self.flag_spa == 1:
                     outputs = model(images)
                     labels_spa = labels.clone()
 
                     if labels_spa.ndim == 1:
-                        labels_spa = torch.eye(self.num_classes, device='cuda')[labels_spa].clone()
+                        labels_spa = torch.eye(self.num_classes, device='cuda')[labels_spa].clone()  # To one-hot
 
-                    loss_each = criterion.forward_each_example(outputs, labels_spa)
-                    loss_each_all[index] = np.array(loss_each.data.cpu())
+                    loss_each = criterion.forward_each_example(outputs, labels_spa)  # Loss for each sample
+                    loss_each_all[index] = np.array(loss_each.data.cpu())  # Put losses for target samples
 
-                    self.flag_noise = util.flag_update(loss_each_all, self.judge_noise)
+                    self.flag_noise = util.flag_update(loss_each_all, self.judge_noise)  # Update the noise flag
 
+                """Forward propagation"""
                 if self.flag_spa == 1:
                     images, labels = util.self_paced_augmentation(images=images,
                                                                   labels=labels,
@@ -314,13 +347,28 @@ class MainNN(object):
                 # self.loss_training_batch[int(i + epoch * np.ceil(self.num_training_data / self.batch_size_training))] = loss_training * outputs.shape[0]
                 num_training_data += images.shape[0]
 
+                """Back propagation and update"""
                 optimizer.zero_grad()
                 loss_training.backward()
                 optimizer.step()
 
+                """When changing flag_noise randomly"""
+                """
+                if self.flag_spa == 1:
+                    outputs = model.forward(x=images)
+
+                    if labels.ndim == 1:
+                        y_soft = torch.eye(self.num_classes, device='cuda')[labels]  # Convert to one-hot
+                    loss_each = criterion.forward_each_example(outputs, y_soft)  # Loss for each sample
+                    loss_each_all[index] = np.array(loss_each.data.cpu())  # Put losses for target samples
+    
+                    self.flag_noise = util.flag_update(loss_each_all, self.judge_noise)  # Update the noise flag
+                """
+
             loss_training_each = loss_training_all / num_training_data
             # np.random.shuffle(self.flag_noise)
 
+            """Test"""
             model.eval()
 
             with torch.no_grad():
@@ -357,6 +405,7 @@ class MainNN(object):
                     loss_test_all += loss_test.item() * outputs.shape[0]
                     num_test_data += images.shape[0]
 
+            """Compute test results"""
             top1_avg = 0
             top5_avg = 0
             test_accuracy = 0
@@ -369,13 +418,16 @@ class MainNN(object):
 
             loss_test_each = loss_test_all / num_test_data
 
+            """Compute running time"""
             end_epoch_time = timeit.default_timer()
             epoch_time = end_epoch_time - start_epoch_time
             num_flag = np.sum(self.flag_noise == 1)
 
+            """Learning rate scheduling"""
             if self.flag_lr_schedule > 1 and scheduler is not None:
                 scheduler.step(epoch - 1 + float(steps) / total_steps)
 
+            """Show results"""
             flag_log = 1
             if flag_log == 1:
                 if self.flag_acc5 == 1:
@@ -414,6 +466,7 @@ class MainNN(object):
         if flag_log == 1:
             print(' ran for %.4fm' % ((end_time - start_time) / 60.))
 
+        """Show accuracy"""
         top1_avg_max = np.max(results[:, 1])
         print(top1_avg_max)
 
@@ -421,6 +474,7 @@ class MainNN(object):
             top5_avg_max = np.max(results[:, 2])
             print(top5_avg_max)
 
+        """Save files"""
         if self.save_file == 1:
             if self.flag_randaug == 1:
                 np.savetxt('results/data_%s_model_%s_num_%s_randaug_%s_n_%s_m_%s_seed_%s_acc_%s.csv'
@@ -435,10 +489,6 @@ class MainNN(object):
                     np.savetxt('results/data_%s_model_%s_aug_%s_num_%s_seed_%s_acc_%s.csv'
                                % (self.n_data, self.n_model, self.n_aug, self.num_training_data,
                                   self.seed, top1_avg_max), results, delimiter=',')
-
-            # np.savetxt('results/loss_training_batch_judge_%s_aug_%s_seed_%s_acc_%s.csv'
-            #            % (self.judge_noise, self.n_aug, self.seed, top1_avg_max),
-            #            self.loss_training_batch, delimiter=',')
 
             if self.flag_variance == 1:
                 np.savetxt('results/loss_variance_judge_%s_aug_%s_acc_%s.csv'

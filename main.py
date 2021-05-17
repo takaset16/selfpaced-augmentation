@@ -3,6 +3,14 @@ import argparse
 import main_nn
 import wandb
 
+'''################################################################################################
+     n_data: 'MNIST', 'CIFAR-10', 'SVHN', 'STL-10', 'CIFAR-100', 'EMNIST', 
+             'COIL-20', 'Fashion-MNIST', 'ImageNet', 'TinyImageNet', 
+             'Letter Recognition', 'Car Evaluation', 'Epileptic Seizure'
+     n_aug: 0(random_noise), 1(flips), 2(crop), 3(transfer), 4(rotation), 5(mixup), 6(cutout), 
+            7(random erasing), 8(ricap), 9(shake-shake)
+#################################################################################################'''
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -37,7 +45,7 @@ def main():
     parser.add_argument('--flag_variance', type=int, default=0)
     args = parser.parse_args()
 
-    if args.flag_wandb == 1:  # when using Weights and Biases
+    if args.flag_wandb == 1:
         wandb.init(project="SPA", config=args)
         config = wandb.config
 

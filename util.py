@@ -41,7 +41,7 @@ def make_training_test_data(x, num, loop):
     return x_training, x_test
 
 
-def run_n_aug(x, y, n_aug, num_classes):
+def run_n_aug(x, y, n_aug, num_classes):  # data augmentation
     # x = augmentation.horizontal_flip(x)
     # x = augmentation.vertical_flip(x)
     # x = augmentation.random_crop(x)
@@ -104,7 +104,7 @@ def self_paced_augmentation(images, labels, flag_noise, index, n_aug, num_classe
 
 def flag_update(loss, judge_noise):
     flag_noise = np.where(loss < judge_noise, 0, 1)
-    # flag_noise = np.where(loss > judge_noise, 0, 1)
+    # flag_noise = np.where(loss > judge_noise, 0, 1)  # reverse
 
     return flag_noise
 

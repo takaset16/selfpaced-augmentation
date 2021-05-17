@@ -42,6 +42,7 @@ class MyDataset_training(Dataset):
     def __init__(self, n_data, num_data, seed, flag_randaug, rand_n, rand_m, cutout):
         self.sampler = None
 
+        """Preprocessing"""
         transform_train = None
 
         if n_data == 'MNIST':
@@ -50,7 +51,7 @@ class MyDataset_training(Dataset):
                 transforms.Normalize(mean=(0.1307,), std=(0.3081,))
             ])
         elif n_data == 'CIFAR-10' or n_data == 'CIFAR-100':
-            if num_data != 0:  # when using small data
+            if num_data != 0:
                 transform_train = transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize(mean=(0.4914, 0.4822, 0.4465), std=(0.2023, 0.1994, 0.2010))
@@ -63,17 +64,17 @@ class MyDataset_training(Dataset):
                     transforms.Normalize(mean=(0.4914, 0.4822, 0.4465), std=(0.2023, 0.1994, 0.2010))
                 ])
         elif n_data == 'SVHN':
-            if num_data != 0:  # when using small data
+            if num_data != 0:
                 transform_train = transforms.Compose([
                     transforms.ToTensor(),
-                    transforms.Normalize(mean=(0.4376821, 0.4437697, 0.47280442), std=(0.19803012, 0.20101562, 0.19703614))
+                    transforms.Normalize(mean=(0.4376821, 0.4437697, 0.47280442), std=(0.19803012, 0.20101562, 0.19703614))  # 画像保存するときはコメントアウトしたほうがよい
                 ])
             else:
                 transform_train = transforms.Compose([
                     # transforms.RandomCrop(32, padding=4),
                     # transforms.RandomHorizontalFlip(),
                     transforms.ToTensor(),
-                    transforms.Normalize(mean=(0.4376821, 0.4437697, 0.47280442), std=(0.19803012, 0.20101562, 0.19703614))
+                    transforms.Normalize(mean=(0.4376821, 0.4437697, 0.47280442), std=(0.19803012, 0.20101562, 0.19703614))  # 画像保存するときはコメントアウトしたほうがよい
                 ])
         if n_data == 'Fashion-MNIST':
             transform_train = transforms.Compose([
@@ -94,19 +95,21 @@ class MyDataset_training(Dataset):
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
 
+        """Cutout"""
         if cutout == 1:
             transform_train.transforms.append(CutoutDefault(cutout))
 
+        """RandAugment"""
         if flag_randaug == 1:
             transform_train.transforms.insert(0, RandAugment(rand_n, rand_m, n_data))
 
         if n_data == 'MNIST':
             self.mydata = torchvision.datasets.MNIST(root='../../datasets/mnist', train=True, transform=transform_train, download=True)
-        elif n_data == 'CIFAR-10':  # CIFAR-10
+        elif n_data == 'CIFAR-10':
             self.mydata = torchvision.datasets.CIFAR10(root='../../datasets/cifar10', train=True, transform=transform_train, download=True)
-        elif n_data == 'SVHN':  # SVHN
-            if num_data != 0:  # when using small data
-                self.mydata = torchvision.datasets.SVHN(root='../../datasets/svhn', split='train', transform=transform_train, download=True)
+        elif n_data == 'SVHN':
+            if num_data != 0:
+                self.mydata = torchvision.datasets.SVHN(root='../../datasets/svhn', split='train', transform=transform_train, download=True)  # only train data
             else:
                 self.mydata = torchvision.datasets.SVHN(root='../../datasets/svhn', split='train', transform=transform_train, download=True)
                 # trainset = torchvision.datasets.SVHN(root='../../datasets/svhn', split='train', transform=transform_train, download=True)
@@ -167,9 +170,9 @@ class MyDataset_training(Dataset):
         elif n_data == 'STL-10':
             num_channel = 3
             num_classes = 10
-            size_after_cnn = 8
+            size_after_cnn = 8  # cnn_stl
             input_size = 96 * 96 * 3
-            # size_after_cnn = 21
+            # size_after_cnn = 21  # small CNN
             # num_training_data = 5000
             # num_test_data = 8000
         elif n_data == 'CIFAR-100':
@@ -200,6 +203,7 @@ class MyDataset_test(Dataset):
     def __init__(self, n_data):
         self.sampler = None
 
+        """Preprocessing"""
         transform_test = None
         if n_data == 'MNIST':
             transform_test = transforms.Compose([
