@@ -1,6 +1,6 @@
 # Self-paced augmentation
 
-Demo code for the flooding regularizer proposed in "Self-paced data augmentation for training neural networks" by Tomoumi Takase, Ryo Karakida, and Hideki Asoh.
+Demo code for the flooding regularizer proposed in "Self-paced data augmentation for training neural networks"([https://www.sciencedirect.com/science/article/pii/S0925231221003374](https://www.sciencedirect.com/science/article/pii/S0925231221003374)) by Tomoumi Takase, Ryo Karakida, and Hideki Asoh.
 
 # Demo
 
