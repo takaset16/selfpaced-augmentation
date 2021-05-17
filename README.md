@@ -3,10 +3,7 @@
 # Demo
 
 ## Requirements
-*python 3.6.5
-*cuda 10.1.243
-*cudnn 7.6.5
-*pytorch
+pytorch　1.6.0
 
 ## Execution
 ```
